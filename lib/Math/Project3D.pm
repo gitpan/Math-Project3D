@@ -12,7 +12,7 @@ use 5.006;
 
 use vars qw/$VERSION/;
 
-$VERSION = 1.008;
+$VERSION = 1.009;
 
 use Carp;
 
@@ -635,18 +635,18 @@ from R^3 onto an arbitrary plane
 
 =head1 VERSION
 
-Current version is 1.008.
+Current version is 1.009.
 
 =head1 SYNOPSIS
 
   use Math::Project3D;
   
-  my $projection = Math::Project3D->new( {
+  my $projection = Math::Project3D->new(
     plane_basis_vector => [0,  0, 0],
     plane_direction1   => [.4, 1, 0],
     plane_direction2   => [.4, 0, 1],
     projection_vector  => [1,  1, 1], # defaults to normal of the plane
-  } );
+  );
 
   $projection->new_function(
     'u,v', 'sin($u)', 'cos($v)', '$u' 

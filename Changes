@@ -1,5 +1,8 @@
 Revision history Math::Project3D, Math::Project3D::Function.
 
+1.009  Wed Dec 11 17:10:55 2002
+	- Fixed synopsis. Now almost runnable as it is in the docs.
+
 1.008  Wed Nov 27 21:48:42 2002
 	- Fixed distribution. (Sorry to not have gotten this right rightaway.)
 	- Documentation fixes.
