@@ -1,7 +1,7 @@
 
 # See the POD documentation at the end of this
 # document for detailed copyright information.
-# (c) 2002 Steffen Mueller, all rights reserved.
+# (c) 2002-2003 Steffen Mueller, all rights reserved.
 
 package Math::Project3D;
 
@@ -12,7 +12,7 @@ use 5.006;
 
 use vars qw/$VERSION/;
 
-$VERSION = 1.009;
+$VERSION = 1.010;
 
 use Carp;
 
@@ -302,6 +302,7 @@ sub project_range_callback {
              $p_vector->element(2,1), # coefficient 1
              $p_vector->element(3,1), # coefficient 2
              $p_vector->element(1,1), # distance in lengths of the projection vector
+             $j,                      # how many ranges did we increment?
       );
    }
    
@@ -635,7 +636,7 @@ from R^3 onto an arbitrary plane
 
 =head1 VERSION
 
-Current version is 1.009.
+Current version is 1.010.
 
 =head1 SYNOPSIS
 
@@ -812,6 +813,12 @@ guarantee valid results for any points.
 For projection of a large number of points, this method will probably
 be the best bet. Its first argument has to be a callback function that
 will be called with the calculated coefficients for every projected point.
+The callback's arguments will be the following: The two coefficients for
+the unit vectors on the projection plane, the coefficient for the
+projection vector (a measure for the point's distance from the plane),
+and (new in v1.010) an integer that will be different from 0 whenever
+a parameter other than the one corresponding to the innermost range
+(the first one) is incremented.
 
 All arguments thereafter have to be array references. Every one of
 these referenced arrays represents the range of one parameter.
@@ -881,7 +888,7 @@ Steffen Mueller, mail at steffen-mueller dot net
 
 =head1 COPYRIGHT
 
-Copyright (c) 2002 Steffen Mueller. All rights reserved.
+Copyright (c) 2002-2003 Steffen Mueller. All rights reserved.
 This program is free software; you can redistribute it and/or
 modify it under the same terms as Perl itself.
 

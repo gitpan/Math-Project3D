@@ -1,5 +1,9 @@
 Revision history Math::Project3D, Math::Project3D::Function.
 
+1.010  Sun Feb 23 16:28:18 2003
+	- Now supplies an integer of range increment count
+	  to every callback invokation in project_range_callback().
+
 1.009  Wed Dec 11 17:10:55 2002
 	- Fixed synopsis. Now almost runnable as it is in the docs.
 

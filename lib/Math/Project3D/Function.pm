@@ -1,7 +1,7 @@
 
 # See the POD documentation at the end of this
 # document for detailed copyright information.
-# (c) 2002 Steffen Mueller, all rights reserved.
+# (c) 2002-2003 Steffen Mueller, all rights reserved.
 
 package Math::Project3D::Function;
 
@@ -9,7 +9,7 @@ use strict;
 use warnings;
 use vars qw/$VERSION/;
 
-$VERSION = 1.009;
+$VERSION = 1.010;
 
 use Carp;
 
@@ -152,7 +152,7 @@ Generate anonymous subroutines for use as functions with Math::Project3D
 
 =head1 VERSION
 
-Current version is 1.008.
+Current version is 1.010.
 
 =head1 SYNOPSIS
 
@@ -206,7 +206,7 @@ Steffen Mueller, mail at steffen-mueller dot net
 
 =head1 COPYRIGHT
 
-Copyright (c) 2002 Steffen Mueller. All rights reserved.
+Copyright (c) 2002-2003 Steffen Mueller. All rights reserved.
 This program is free software; you can redistribute it and/or
 modify it under the same terms as Perl itself.
 
