@@ -1,5 +1,5 @@
-Math::Project3D version 1.005
-==============================
+Math::Project3D version 1.007
+=============================
 
 INTRODUCTION
 
@@ -30,6 +30,7 @@ This module requires these other modules and libraries:
 
   Math::Project3D::Function (in this distribution)
   Math::MatrixReal
+  Test::More
 
 COPYRIGHT AND LICENCE
 

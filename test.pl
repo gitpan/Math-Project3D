@@ -1,5 +1,3 @@
-#!/usr/bin/perl
-
 # Tests for Math::Project3D and Math::Project3D::Function
 # (c) 2002 Steffen Mueller, all rights reserved
 
@@ -8,7 +6,9 @@
 use strict;
 use warnings;
 
-use Test::More tests => 103;
+# use lib '.';
+
+use Test::More tests => 107;
 
 use Math::Project3D;
 
@@ -147,12 +147,9 @@ foreach ( my $u = -1.1; $u <= 1; $u += 0.8 ) {
          # We're a bit inaccurate. :(
          my $correct = 0;
          $correct = 1 if
-            $x        >= $x_c-10E-15 and
-            $x        >= $x_c-10E-15 and
-            $y        >= $y_c-10E-15 and
-            $y        <= $y_c+10E-15 and
-            $distance <= $d_c+10E-15 and
-            $distance <= $d_c+10E-15;
+            "$x"        eq "$x_c" and
+            "$y"        eq "$y_c" and
+            "$distance" eq "$d_c";
 
          ok( $correct,
              "Projected correctly using project() for ($u, $v, $w)."
@@ -187,16 +184,22 @@ foreach ( my $u = -10; $u <= 10; $u += 9 ) {
 
 my $result_matrix = $projection->project_list(@array_refs);
 
-
 my $correct = 0;
 foreach my $no (1..@array_refs) {
    my ($x_c, $y_c, $d_c) = splice @result_set, 0, 3;
+   my @result = (
+     $result_matrix->element($no, 1),
+     $result_matrix->element($no, 2),
+     $result_matrix->element($no, 3),
+   );
 
-   # == it is not, but eq?????
+   # == it is not, but eq????? Can't be a bug in the
+   # Perl code, rather some C trouble?
+   # So workaround :(
    $correct++ if
-      $result_matrix->element($no, 1) eq $x_c and
-      $result_matrix->element($no, 2) eq $y_c and
-      $result_matrix->element($no, 3) eq $d_c;
+      "$result[0]" eq "$x_c" and
+      "$result[1]" eq "$y_c" and
+      "$result[2]" eq "$d_c";
 }
 
 ok( $correct == scalar(@array_refs),
@@ -240,14 +243,71 @@ $projection->project_range_callback(
    [-1],
 );
 
+
 ok(
     $okay == 45,
     "Projected correctly using project_range_callback ($okay okay of 45)"
   );
 
+# Test rotate and unrotate
+
+$projection->new_function(
+  't,u', '$t', '$u', '$t+$u'
+);
+
+my @res_unrot = $projection->project(1,5);
+
+my ($old_func, $rot_func) = $projection->rotate([100,0,0]);
+
+ok(
+    ref $old_func eq 'CODE' &&
+    ref $rot_func eq 'CODE',
+    "Rotate returns old and new function coderefs."
+  );
+
+my @res_rot = $projection->project(1,5);
+
+ok(
+    "$res_rot[0]" eq '47' &&
+    "$res_rot[1]" eq '43' &&
+    "$res_rot[2]" eq '-42',
+    "Projected correctly after rotation."
+  );
+
+$projection->rotate([-310,213,213]);
+$projection->rotate([-310,-213,213]);
+$projection->rotate([-310,213,-213]);
+$projection->rotate([310,213,213]);
+
+$projection->unrotate(4);
+
+my @res_rot_2 = $projection->project(1,5);
+
+ok(
+    "$res_rot_2[0]" eq '47' &&  # note that == won't work here, but
+                                # printing yields -47!? Screams C problem
+                                # at me.
+    "$res_rot_2[1]" eq '43' &&
+    "$res_rot_2[2]" eq '-42',
+    "Projected correctly after rotating 5 times and unrotating 4 times."
+  );
+
+$projection->rotate([-310,213,213]);
+$projection->rotate([-310,-213,213]);
+$projection->rotate([-310,213,-213]);
+$projection->rotate([310,213,213]);
+
+$projection->unrotate();
 
 
+@res_rot_2 = $projection->project(1,5);
 
+ok(
+    "$res_rot_2[0]" eq "$res_unrot[0]" &&
+    "$res_rot_2[1]" eq "$res_unrot[1]" &&
+    "$res_rot_2[2]" eq "$res_unrot[2]",
+    "Projected correctly after rotating 5 times and fully unrotating."
+  );
 __DATA__
 
 The following are the result of the separated project() method

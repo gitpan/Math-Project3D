@@ -1,5 +1,16 @@
 Revision history Math::Project3D, Math::Project3D::Function.
 
+1.007  Sun Nov 23 15:23:51 2002
+	- Added rotate() method
+	- Added unrotate() method
+	- More documentation
+	- Several bugfixes (in the tests, too)
+
+1.006  Fri Nov 22 18:13:02 2002
+	- Fixed documentation
+	- Fixed unnecessary Exporter dependency.
+	  How could I possibly overlook that line?
+
 1.005  Fri Nov 22 15:00:00 2002
 	- Fixed documentation / versioning bug.
 	  What a no-brainer!

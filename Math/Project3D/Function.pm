@@ -9,7 +9,7 @@ use strict;
 use warnings;
 use vars qw/$VERSION/;
 
-$VERSION = 1.005;
+$VERSION = 1.007;
 
 use Carp;
 
@@ -152,7 +152,7 @@ Generate anonymous subroutines for use as functions with Math::Project3D
 
 =head1 VERSION
 
-Current version is 1.005. Beta software. Use at your own risk.
+Current version is 1.007.
 
 =head1 SYNOPSIS
 

@@ -12,7 +12,7 @@ use 5.006;
 
 use vars qw/$VERSION/;
 
-$VERSION = 1.005;
+$VERSION = 1.007;
 
 use Carp;
 
@@ -159,6 +159,9 @@ sub new {
 sub project {
    my $self  = shift;
 
+   croak "You need to assign a function before projecting it."
+     if not defined $self->get_function();
+
    # Apply function
    my $point = Math::MatrixReal->new_from_cols(
                  [
@@ -207,6 +210,9 @@ sub project {
 
 sub project_range_callback {
    my  $self     = shift;
+
+   croak "You need to assign a function before projecting it."
+     if not defined $self->get_function();
 
    # Argument checking
    my  $callback = shift;
@@ -323,6 +329,9 @@ sub project_list {
    croak "No arguments passed to project_list()."
      if @_ == 0;
 
+   croak "You need to assign a function before projecting it."
+     if not defined $self->get_function();
+
    # Create result matrix to hold individual results.
    my $result_matrix = Math::MatrixReal->new(scalar(@_), 3);
 
@@ -404,6 +413,215 @@ sub _make_matrix {
 }
 
 
+# Evil method rotate
+# 
+# Takes a vector as argument. (Either an MMR object or an array ref
+# of an array containing three components.)
+# The method will replace the function with a wrapper around the original
+# function that rotates the result of the original function by the same
+# angles that the z-axis (e3) needs to be turned to become the passed vector.
+# Example: Passed [1,0,0] means that e3 will be rotated to become e1.
+# Hence all points will be rotated by 90 degrees and orthogonally to e2.
+# Returns the wrapper function and the old function as code references.
+# 
+# Important note: You can apply this function multiple times. That means
+# if you rotated the function once, you may do so again and the original
+# rotated function will be wrapped again so that you effectively rotate
+# it twice. Note, however, that you will sacrifice performance on the
+# altar of recursion that way.
+# 
+# !!!FIXME!!! This is slow. Sloooooow. Conceptually slow, but the
+# implementation sucks badly, too. It is especially unnerving to me that
+# the whole lexical scope of a myriad of intermediate result matrices and
+# vectors is kept because we use closures. Closures are great, but not
+# in bloated lexical scopes. How fix that without introducing either
+#  - ugly additional method
+#  - ugly additional blocks to keep the scope clean. (Yuck!)
+
+sub rotate {
+   my $self = shift;
+
+   croak "You need to assign a function before rotating it."
+     if not defined $self->get_function();
+
+   # We want to rotate everything the same way we would
+   # have to rotate e3 (z unit vector) to become the unit
+   # vector parallel to $e3_.
+   my $e3_ = shift;
+
+   # Make sure we work with a MMR vector
+   if (ref $e3_ ne 'Math::MatrixReal') {
+      croak "Invalid vector passed to rotate()."
+        if ref $e3_ ne 'ARRAY';
+
+      $e3_ = Math::MatrixReal->new_from_cols([$e3_]);
+   }
+
+   $e3_ *= 1 / $e3_->length();
+
+   my $e3 = Math::MatrixReal->new_from_cols([[0,0,1]]);
+
+   # The axis we want to rotate around
+   my $axis = $e3->vector_product($e3_);
+
+   # The angle we want to rotate by.
+   my $angle = acos($e3->scalar_product($e3_));
+
+   # Rotationsmatrix um Achse (Vektor) a = (a,b,c):
+   #                           [a*a a*b a*c]
+   # M(rot) = (1-cos(alpha)) * [a*b b*b b*c]  +
+   #                           [a*c b*c c*c]
+   #                           [1   0   0  ]
+   #          cos(alpha)     * [0   1   0  ]  +
+   #                           [0   0   1  ]
+   #                           [0   -c  b  ]
+   #          sin(alpha)     * [c   0   -a ]
+   #                           [-b  a   0  ]
+   # (from: Merziger, Wirth: "Repetitorium der Hoeheren Mathematik"
+   #        Binomi Verlag. ISBN 3-923923-33-3)
+
+   my ($a, $b, $c) = ($axis->element(1,1), $axis->element(2,1), $axis->element(3,1));
+
+   my $matrix1 = Math::MatrixReal->new_from_cols(
+      [
+        [$a*$a, $a*$b, $a*$c],
+        [$b*$a, $b*$b, $b*$c],
+        [$c*$a, $c*$b, $c*$c],
+      ],
+   );
+
+   my $matrix2 = Math::MatrixReal->new_diag([1,1,1]);
+
+   my $matrix3 = Math::MatrixReal->new_from_cols(
+      [
+        [0,   -$c, $b ],
+        [$c,  0,   -$a],
+        [-$b, $a,  0  ],
+      ],
+   );
+
+   # What a painful birth, but here we are:
+   my $rot_matrix = (1-cos($angle)) * $matrix1 + cos($angle) * $matrix2 +
+                    sin($angle)     * $matrix3;
+
+   # For (Rotated vector r=(r1,r2,r3), source vector x=(x1,x2,x3)):
+   # (eq1) r = $rot_matrix * x
+   # Hence:
+   # (eq2) x = transposed($rot_matrix) * r
+   # 
+   # x and $rot_matrix (and therefore also transposed($rot_matrix)
+   # are know. Hance, (eq2) can be solved as a linear equation system
+   # of the form: ($rot_matrix be all elements a(ij))
+   # 
+   # a11*r1 + a12*r2 + a13*r3 = x1
+   # a21*r1 + a22*r2 + a23*r3 = x2
+   # a31*r1 + a32*r2 + a33*r3 = x3
+
+   # Transpose the rotation matrix and then decompose_LR
+   $rot_matrix->transpose($rot_matrix);
+   $rot_matrix = $rot_matrix->decompose_LR();
+
+   # Save old function
+   my $old_function = $self->get_function;
+
+   my $rotator = sub {
+
+      # If the first argument is 'restore', we restore the old
+      # function from the lexical $old_function and return.
+      # This is needed for the unrotate() method.
+      $self->{function} = $old_function, return if $_[0] eq 'restore';
+
+      # We apply the old function as usual.
+      my $source_vec = Math::MatrixReal->new_from_cols(
+         [ [ $old_function->(@_) ] ],
+      );
+
+      # But then we rotate the results.
+      my ($dimension, $result_vector, undef) = $rot_matrix->solve_LR($source_vec);
+
+      # There should be a solution to the equation system.
+      croak "Dimension of rotation result is '$dimension' but should be 0."
+        if $dimension;
+
+      # return the rotated vector
+      return (
+        $result_vector->element(1,1),
+        $result_vector->element(2,1),
+        $result_vector->element(3,1),
+      );
+   };
+   
+   # Set the new function wrapper to become the actual function
+   # that will be used for projection calculations.
+   $self->set_function($rotator);
+
+   # The level of nested rotation has been increased.
+   $self->{rotated}++;
+
+   return ($rotator, $old_function);
+}
+
+
+# Counter-evil method unrotate
+# 
+# Removes the evil hack of rotation using an evil hack.
+# Takes an optional integer as argument. Removes
+# [integer] levels of rotation. 'Level of rotation'
+# means: one rotation wrapper of the original function
+# as wrapped using rotate().
+# If no integer was passed, defaults to the total number
+# of rotations that were made, effectively removing
+# any rotation.
+# Returns the number of wrappers (rotations) removed.
+
+sub unrotate {
+   my $self = shift;
+
+   croak "You need to assign a function before rotating it."
+     if not defined $self->get_function();
+
+   # How many levels of rotation to we want to remove?
+   my $level = shift;
+
+   # Boundary checking for the level. Default to the number
+   # of rotation wrappers.
+   if (not defined $level or $level <= 0 or $level > $self->{rotated}) {
+      $level = $self->{rotated};
+   }
+
+   $level = int $level; # I don't trust users.
+
+   # If we're rotated at all.
+   if ($self->{rotated}) {
+
+      # Count the number of wrappers removed.
+      my $no_unrotated = 0;
+
+      # While we still want to unrotate and while we still can
+      while ($level != 0 and $self->{rotated} != 0) {
+
+         # Let the function restore its parent.
+         $self->{function}->('restore');
+
+         $self->{rotated}--;
+         $level--;
+         $no_unrotated++;
+      }
+
+      return $no_unrotated;
+
+   } else {
+      # We aren't even rotated.
+      return 0;
+
+   }
+}
+
+
+# Function acos (arc cosine)
+# Not a method.
+sub acos { atan2( sqrt( 1 - $_[0] * $_[0] ), $_[0] ) }
+
 1;
 
 __END__
@@ -417,7 +635,7 @@ from R^3 onto an arbitrary plane
 
 =head1 VERSION
 
-Current version is 1.005. Beta. Use at your own risk.
+Current version is 1.007.
 
 =head1 SYNOPSIS
 
@@ -434,21 +652,21 @@ Current version is 1.005. Beta. Use at your own risk.
     'u,v', 'sin($u)', 'cos($v)', '$u' 
   );
 
+  # Rotate the points before projecting them.
+  # Rotate every point the same way we need to rotate the
+  # z-axis to get the x-axis.
+  $projection->rotate([1,0,0]);
+
+  # Nah, changed my minds. (<-- Freudian slip?)
+  $projection->unrotate();
+
   ($plane_coeff1, $plane_coeff2, $distance_coeff) =
      $projection->project( $u, $v );
 
-=head1 NOTE
-
-This module is beta software. That means it should work as expected
-(by the author) and as documented, but it has not been thoroughly
-enough tested in order to qualify as "stable" or "mature" code. The
-documentation is still sparse (which is why it works as documented),
-but that should be fixed real-soon-now.
+=head1 BACKGROUND
 
 I'll start explaining what this module does with some background. Feel
 free to skip to L<DESCRIPTION> if you don't feel like vector geometry.
-
-=head1 BACKGROUND
 
 Given a function of three components and of an arbitrary number of
 parameters, plus a few vectors, this module creates a projection of
@@ -620,6 +838,38 @@ sets being calculated:
 
 croaks if a point cannot be projected. (projection vector parallel
 to the plane but not I<in> the plane.)
+
+=item rotate
+
+Takes a vector as argument. (Either an MMR object or an array ref
+of an array containing three components.)
+
+The method will replace the function with a wrapper around the original
+function that rotates the result of the original function by the same
+angles that the z-axis (e3) needs to be turned to become the passed vector.
+Example: Passed [1,0,0] means that e3 will be rotated to become e1.
+Hence all points will be rotated by 90 degrees and orthogonally to e2.
+Returns the wrapper function and the old function as code references.
+
+You can apply this function multiple times. That means
+if you rotated the function once, you may do so again and the original
+rotated function will be wrapped again so that you effectively rotate
+it twice. Note, however, that you will sacrifice performance on the
+altar of recursion that way.
+
+=item unrotate
+
+Removes the evil hack of rotation using an evil hack.
+Takes an optional integer as argument. Removes
+[integer] levels of rotation. 'Level of rotation'
+means: one rotation wrapper of the original function
+as wrapped using rotate().
+
+If no integer was passed, defaults to the total number
+of rotations that were made, effectively removing
+any rotation.
+
+Returns the number of wrappers (rotations) removed.
 
 =back
 
