@@ -3,9 +3,9 @@ use ExtUtils::MakeMaker;
 # the contents of the Makefile that is written.
 WriteMakefile(
     'NAME'		=> 'Math::Project3D',
-    'VERSION_FROM'	=> 'Math/Project3D.pm', # finds $VERSION
+    'VERSION_FROM'	=> 'lib/Math/Project3D.pm', # finds $VERSION
     'PREREQ_PM'		=> {Math::MatrixReal => 1.9, Test::More => 0.44},
     ($] >= 5.005 ?    ## Add these new keywords supported since 5.005
-      (ABSTRACT_FROM => 'Math/Project3D.pm', # retrieve abstract from module
+      (ABSTRACT_FROM => 'lib/Math/Project3D.pm', # retrieve abstract from module
        AUTHOR     => 'Steffen Mueller <project3d-module@steffen-mueller.net>') : ()),
 );

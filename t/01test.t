@@ -6,8 +6,6 @@
 use strict;
 use warnings;
 
-# use lib '.';
-
 use Test::More tests => 107;
 
 use Math::Project3D;
@@ -266,9 +264,10 @@ ok(
   );
 
 my @res_rot = $projection->project(1,5);
+use Devel::Peek;
 
 ok(
-    "$res_rot[0]" eq '47' &&
+    "$res_rot[0]" eq '47' && # Floating point inaccuracy!
     "$res_rot[1]" eq '43' &&
     "$res_rot[2]" eq '-42',
     "Projected correctly after rotation."
@@ -284,11 +283,9 @@ $projection->unrotate(4);
 my @res_rot_2 = $projection->project(1,5);
 
 ok(
-    "$res_rot_2[0]" eq '47' &&  # note that == won't work here, but
-                                # printing yields -47!? Screams C problem
-                                # at me.
-    "$res_rot_2[1]" eq '43' &&
-    "$res_rot_2[2]" eq '-42',
+    "$res_rot_2[0]" == '47' &&  # note that == won't work here
+    "$res_rot_2[1]" eq '43' &&  # That's because of floating point
+    "$res_rot_2[2]" eq '-42',   # inaccuracies.
     "Projected correctly after rotating 5 times and unrotating 4 times."
   );
 

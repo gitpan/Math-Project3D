@@ -12,7 +12,7 @@ use 5.006;
 
 use vars qw/$VERSION/;
 
-$VERSION = 1.007;
+$VERSION = 1.008;
 
 use Carp;
 
@@ -635,7 +635,7 @@ from R^3 onto an arbitrary plane
 
 =head1 VERSION
 
-Current version is 1.007.
+Current version is 1.008.
 
 =head1 SYNOPSIS
 
@@ -758,12 +758,14 @@ scalar variables. (eg. 't,u' will mean that the parameters availlable
 to the string expressions are $t and $u.)
 
 Due to some black magic in Math::Project3D::Function, the string
-expression syntax is actually faster at run-time because you save
-subroutine calls which are a major bottleneck in Perl.
-(Like 50 ops or so?) Arguably, the closure syntax is more powerful
-because being a closure, it has access to variables I<outside> the
-scope of the resulting vectorial function. For a simple-minded
-example, you may have a look at the synopsis in
+expression syntax may actually be I<slightly> faster at run-time
+because it saves sub routine calls which are slow in Perl.
+Generally speaking, you should just choose whichever syntax you
+like because benchmarks show that the difference is very small.
+(Which is a mystery to me, really.) Arguably, the closure syntax
+is more powerful because closures, have access to variables
+I<outside> the scope of the resulting vectorial function. For
+a simple-minded example, you may have a look at the synopsis in
 L<Math::Project3D::Function>. Picture a dynamic radius, etc.
 
 =item get_function
