@@ -5,12 +5,16 @@
 
 use strict;
 use warnings;
+use constant DELTA => 1e-9;
 
 use Test::More tests => 107;
 
-use Math::Project3D;
+use_ok('Math::Project3D');
 
-ok(1, "Module loaded.");
+sub numeq {
+    $_[0] + DELTA > $_[1]
+    and $_[0] - DELTA < $_[1]
+}
 
 # Test Math::Project3D->new_function and MP3D::Function
 
@@ -44,9 +48,9 @@ ok(1, "Module loaded.");
       foreach my $v (-2..2) {
          my ($x, $y, $z) = $function->($u, $v);
          ok(
-             $x == 5*sin($u)*cos($v) &&
-             $y == 5*sin($u)*sin($v) &&
-             $z == 5*cos($u),
+             numeq( $x, 5*sin($u)*cos($v) )
+             && numeq( $y, 5*sin($u)*sin($v) )
+             && numeq( $z, 5*cos($u) ),
              "Function returned correct value for ($u, $v)"
          );
       }
@@ -64,9 +68,9 @@ foreach my $u (-2..2) {
     foreach my $v (-2..2) {
         my ($x, $y, $z) = $function->($u, $v);
         ok(
-            $x == $u      &&
-            $y == sin($v) &&
-            $z == cos($v),
+            numeq( $x, $u )
+            && numeq( $y, sin($v) )
+            && numeq( $z, cos($v) ),
             "Function returned correct value for ($u, $v)"
         );
     }
@@ -84,9 +88,9 @@ foreach my $u (-2..2) {
         my ($x, $y, $z) = $function->($u, $v);
 
         ok(
-            $x == $u      &&
-            $y == sin($u) &&
-            $z == cos($v),
+            numeq( $x, $u )
+            && numeq( $y, sin($u) )
+            && numeq( $z, cos($v) ),
             "Function returned correct value for ($u, $v)"
         );
     }
@@ -142,12 +146,12 @@ foreach ( my $u = -1.1; $u <= 1; $u += 0.8 ) {
          my ($x, $y, $distance) = $projection->project($u,$v,$w);
          my ($x_c, $y_c, $d_c) = splice @result_set, 0, 3;
 
-         # We're a bit inaccurate. :(
+         # We are a bit inaccurate. :(
          my $correct = 0;
          $correct = 1 if
-            "$x"        eq "$x_c" and
-            "$y"        eq "$y_c" and
-            "$distance" eq "$d_c";
+            numeq( $x, $x_c )
+            and numeq( $y, $y_c )
+            and numeq( $distance, $d_c );
 
          ok( $correct,
              "Projected correctly using project() for ($u, $v, $w)."
@@ -191,13 +195,10 @@ foreach my $no (1..@array_refs) {
      $result_matrix->element($no, 3),
    );
 
-   # == it is not, but eq????? Can't be a bug in the
-   # Perl code, rather some C trouble?
-   # So workaround :(
    $correct++ if
-      "$result[0]" eq "$x_c" and
-      "$result[1]" eq "$y_c" and
-      "$result[2]" eq "$d_c";
+      numeq( $result[0], $x_c )
+      and numeq( $result[1], $y_c )
+      and numeq( $result[2], $d_c );
 }
 
 ok( $correct == scalar(@array_refs),
@@ -266,9 +267,9 @@ ok(
 my @res_rot = $projection->project(1,5);
 
 ok(
-    "$res_rot[0]" eq '47' && # Floating point inaccuracy!
-    "$res_rot[1]" eq '43' &&
-    "$res_rot[2]" eq '-42',
+    numeq( $res_rot[0], 47 )
+    && numeq( $res_rot[1], 43 )
+    && numeq( $res_rot[2], -42 ),
     "Projected correctly after rotation."
   );
 
@@ -282,9 +283,9 @@ $projection->unrotate(4);
 my @res_rot_2 = $projection->project(1,5);
 
 ok(
-    "$res_rot_2[0]" == '47' &&  # note that == won't work here
-    "$res_rot_2[1]" eq '43' &&  # That's because of floating point
-    "$res_rot_2[2]" eq '-42',   # inaccuracies.
+    numeq( $res_rot_2[0], 47 )
+    && numeq( $res_rot_2[1], 43 )
+    && numeq( $res_rot_2[2], -42 ),
     "Projected correctly after rotating 5 times and unrotating 4 times."
   );
 
@@ -299,14 +300,14 @@ $projection->unrotate();
 @res_rot_2 = $projection->project(1,5);
 
 ok(
-    "$res_rot_2[0]" eq "$res_unrot[0]" &&
-    "$res_rot_2[1]" eq "$res_unrot[1]" &&
-    "$res_rot_2[2]" eq "$res_unrot[2]",
+    numeq( $res_rot_2[0], $res_unrot[0] )
+    && numeq( $res_rot_2[1], $res_unrot[1] )
+    && numeq( $res_rot_2[2], $res_unrot[2] ),
     "Projected correctly after rotating 5 times and fully unrotating."
   );
 __DATA__
 
-The following are the result of the separated project() method
+The following are the result of the separate project() method
 calls.
 
 start set

@@ -1,7 +1,7 @@
 
 # See the POD documentation at the end of this
 # document for detailed copyright information.
-# (c) 2002-2003 Steffen Mueller, all rights reserved.
+# (c) 2002-2006 Steffen Mueller, all rights reserved.
 
 package Math::Project3D;
 
@@ -12,12 +12,76 @@ use 5.006;
 
 use vars qw/$VERSION/;
 
-$VERSION = 1.010;
+$VERSION = 1.02;
 
 use Carp;
 
 use Math::MatrixReal;
 use Math::Project3D::Function;
+
+    sub _max {
+        my $max = 0;
+        for (@_) {
+            $max = $_ if $_ > $max;
+        }
+        $max
+    }
+    sub _new_from_rows {
+        my $class = 'Math::MatrixReal';
+        my $rows = shift;
+        my @rows;
+        foreach (@$rows) {
+            push @rows,
+              (ref($_) eq 'Math::MatrixReal' ? [@{$_->[0][0]}] : [@{$_}]);
+        }
+        return bless [
+            \@rows,
+            scalar(@rows),
+            _max(
+                map {
+                    ref($_) eq 'Math::MatrixReal' ? $_->[2] : scalar(@$_)
+                }
+                @rows
+            ),
+            undef,
+            undef,
+            undef
+        ] => $class;
+    }
+
+    sub _new_from_cols {
+        my $class = 'Math::MatrixReal';
+        my $cols = shift;
+        my $num_rows = _max(
+            map {
+                ref($_) eq 'Math::MatrixReal' ? $_->[1] : scalar(@$_)
+            }
+            @$cols
+        );
+        my $num_cols = @$cols;
+        
+        my @rows;
+        my $cn = 0;
+        foreach (@$cols) {
+            my $col = $_;
+            if (ref($col) eq 'Math::MatrixReal') {
+                $col = $col->[0];
+                $rows[$_][$cn] = $col->[$_][0] for 0..$num_rows-1;
+            }
+            else {
+                $rows[$_][$cn] = $col->[$_] for 0..$num_rows-1;
+            }
+            $cn++;
+        }
+        return bless [
+            \@rows,
+            $num_rows,
+            $num_cols,
+            undef,
+            undef,
+            undef
+        ] => $class;
+    }
 
 
 # class and object method new_function
@@ -129,7 +193,7 @@ sub new {
    # linear_eq_system will be the matrix of n,d,e.
    # result_vector will be p+s(t) (later)
 
-   my $linear_eq_system = Math::MatrixReal->new_from_cols(
+   my $linear_eq_system = _new_from_cols(
                          [
                            $self->{projection_vector},
                            $self->{plane_direction1},
@@ -163,14 +227,14 @@ sub project {
      if not defined $self->get_function();
 
    # Apply function
-   my $point = Math::MatrixReal->new_from_cols(
+   my $point = _new_from_cols(
                  [
                    [ $self->{function}->(@_) ],
                  ]
    );
 
    # Generate result_vector
-   my $result_vector = Math::MatrixReal->new_from_cols(
+   my $result_vector = _new_from_cols(
                          [
                            $self->{plane_basis_vector} + $point
                          ]
@@ -271,14 +335,14 @@ sub project_range_callback {
       }
 
       # Apply function
-      my $point = Math::MatrixReal->new_from_cols(
+      my $point = _new_from_cols(
                     [
                       [ $function->(@params) ],
                     ]
       );
 
       # Generate result_vector
-      my $result_vector = Math::MatrixReal->new_from_cols(
+      my $result_vector = _new_from_cols(
                             [
                               $self->{plane_basis_vector} + $point
                             ]
@@ -436,7 +500,7 @@ sub _make_matrix {
 # the whole lexical scope of a myriad of intermediate result matrices and
 # vectors is kept because we use closures. Closures are great, but not
 # in bloated lexical scopes. How fix that without introducing either
-#  - ugly additional method
+#  - an ugly additional method
 #  - ugly additional blocks to keep the scope clean. (Yuck!)
 
 sub rotate {
@@ -455,12 +519,12 @@ sub rotate {
       croak "Invalid vector passed to rotate()."
         if ref $e3_ ne 'ARRAY';
 
-      $e3_ = Math::MatrixReal->new_from_cols([$e3_]);
+      $e3_ = _new_from_cols([$e3_]);
    }
 
    $e3_ *= 1 / $e3_->length();
 
-   my $e3 = Math::MatrixReal->new_from_cols([[0,0,1]]);
+   my $e3 = _new_from_cols([[0,0,1]]);
 
    # The axis we want to rotate around
    my $axis = $e3->vector_product($e3_);
@@ -483,7 +547,7 @@ sub rotate {
 
    my ($a, $b, $c) = ($axis->element(1,1), $axis->element(2,1), $axis->element(3,1));
 
-   my $matrix1 = Math::MatrixReal->new_from_cols(
+   my $matrix1 = _new_from_cols(
       [
         [$a*$a, $a*$b, $a*$c],
         [$b*$a, $b*$b, $b*$c],
@@ -493,7 +557,7 @@ sub rotate {
 
    my $matrix2 = Math::MatrixReal->new_diag([1,1,1]);
 
-   my $matrix3 = Math::MatrixReal->new_from_cols(
+   my $matrix3 = _new_from_cols(
       [
         [0,   -$c, $b ],
         [$c,  0,   -$a],
@@ -533,7 +597,7 @@ sub rotate {
       $self->{function} = $old_function, return if $_[0] eq 'restore';
 
       # We apply the old function as usual.
-      my $source_vec = Math::MatrixReal->new_from_cols(
+      my $source_vec = _new_from_cols(
          [ [ $old_function->(@_) ] ],
       );
 
@@ -563,7 +627,7 @@ sub rotate {
 }
 
 
-# Counter-evil method unrotate
+# method unrotate
 # 
 # Removes the evil hack of rotation using an evil hack.
 # Takes an optional integer as argument. Removes
@@ -634,10 +698,6 @@ __END__
 Math::Project3D - Project functions of multiple parameters
 from R^3 onto an arbitrary plane
 
-=head1 VERSION
-
-Current version is 1.010.
-
 =head1 SYNOPSIS
 
   use Math::Project3D;
@@ -658,7 +718,7 @@ Current version is 1.010.
   # z-axis to get the x-axis.
   $projection->rotate([1,0,0]);
 
-  # Nah, changed my minds. (<-- Freudian slip?)
+  # Nah, changed my mind
   $projection->unrotate();
 
   ($plane_coeff1, $plane_coeff2, $distance_coeff) =
@@ -880,7 +940,29 @@ any rotation.
 
 Returns the number of wrappers (rotations) removed.
 
+=item acos
+
+For convenience, there is an I<acos> arc cosine function (not method).
+Don't use it outside of the module. Use L<Math::Trig> instead.
+
 =back
+
+=head1 CAVEAT
+
+Math::Project3D is pretty slow. Why? Because Perl is. This kind of algebra
+should be done in C, but I'm not going to rewrite all of this
+(and Math::MatrixReal) in C.
+
+As of version 1.02, I'm using a semi-clever hack that breaks the encapsulation
+of Math::MatrixReal in a way. I'm doing that because the new_from_*
+constructors of Math::MatrixReal are written in a way that would accept
+bananas and make matrices out of them. In plain english, that means they
+jump through a lot of hoops to accept the weirdest input. By skipping these
+steps, we get a 2-fold speed-up. Right. Math::Project3D spent way more than
+50% of its cycles in the Math::MatrixReal constructors.
+
+Now, the caveat really is that a future version of Math::MatrixReal B<might>
+break this. I'll release a new version of Math::Project3D in case that happens.
 
 =head1 AUTHOR
 
@@ -888,12 +970,14 @@ Steffen Mueller, mail at steffen-mueller dot net
 
 =head1 COPYRIGHT
 
-Copyright (c) 2002-2003 Steffen Mueller. All rights reserved.
+Copyright (c) 2002-2006 Steffen Mueller. All rights reserved.
 This program is free software; you can redistribute it and/or
 modify it under the same terms as Perl itself.
 
 =head1 SEE ALSO
 
 L<Math::MatrixReal>
+
+L<Math::Project3D::Function>
 
 =cut
